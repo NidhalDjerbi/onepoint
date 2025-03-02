@@ -1,0 +1,48 @@
+import Fastify from 'fastify';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
+import jwt from '@fastify/jwt';
+import { config } from './config';
+
+const server = Fastify({ logger: true });
+
+server.register(swagger, {
+  swagger: {
+    info: {
+      title: 'User API',
+      version: '1.0.0',
+    },
+    securityDefinitions: {
+      BearerAuth: {
+        type: 'apiKey',
+        name: 'Authorization',
+        in: 'header',
+      },
+    },
+  },
+});
+server.register(swaggerUi, { routePrefix: '/docs' });
+
+
+server.register(jwt, { secret: config.jwtSecret });
+
+
+server.decorate('authenticate', async (request: any, reply: any) => {
+  try {
+    await request.jwtVerify();
+  } catch (err) {
+    reply.send(err);
+  }
+});
+
+const start = async () => {
+  try {
+    await server.listen({ port: config.port, host: '0.0.0.0' });
+    console.log(`🚀 Server running on http://localhost:${config.port}`);
+  } catch (err) {
+    server.log.error(err);
+    process.exit(1);
+  }
+};
+
+start();
