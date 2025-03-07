@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:17
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  api:
+    build: ./api
+    container_name: api
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://postgres:mypassword@db:5432/postgres
+
+  dashboard:
+    build:
+      context: ./dashboard
+      args:
+        - VITE_API_BASE_URL=http://localhost:3000
+    container_name: dashboard
+    restart: always
+    ports:
+      - "3001:80"
+    depends_on:
+      - api
+volumes:
+  db_data:
