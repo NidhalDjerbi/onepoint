@@ -4,7 +4,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon --ext ts --exec tsx src/server.ts",
-    "start": "node dist/server.js",
+    "build": "tsc ",
+    "start": "node ./dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -13,7 +14,7 @@
   "description": "",
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
-    "@types/node": "^22.13.8",
+    "@types/node": "^22.13.9",
     "@types/pg": "^8.11.11",
     "drizzle-kit": "^0.30.5",
     "nodemon": "^3.1.9",
@@ -22,6 +23,7 @@
     "typescript": "^5.8.2"
   },
   "dependencies": {
+    "@fastify/cors": "^11.0.0",
     "@fastify/jwt": "^9.0.4",
     "@fastify/swagger": "^9.4.2",
     "@fastify/swagger-ui": "^5.2.2",
@@ -29,8 +31,10 @@
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.40.0",
     "fastify": "^5.2.1",
+    "fastify-cors": "^6.0.3",
     "pg": "^8.13.3",
     "zod": "^3.24.2",
     "zod-to-json-schema": "^3.24.3"
-  }
+  },
+  "type": "module"
 }

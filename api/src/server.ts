@@ -2,10 +2,12 @@ import Fastify from "fastify";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import jwt from "@fastify/jwt";
-import { config } from "./config";
-import { userRoutes } from "./routes/userRoutes";
-import { errorHandler } from "./utils/errorHandler";
-
+import { config } from "./config.js";
+import { userRoutes } from "./http/routes/userRoutes.js";
+import { errorHandler } from "./utils/errorHandler.js";
+import cors from "@fastify/cors";
+import { authRoutes } from "./http/routes/authRoutes.js";
+import { seed } from "./db/index.js";
 const server = Fastify({ logger: false });
 
 server.register(swagger, {
@@ -35,23 +37,23 @@ server.register(swaggerUi, { routePrefix: "/docs" });
 
 server.register(jwt, { secret: config.jwtSecret });
 
-server.decorate("authenticate", async (request: any, reply: any) => {
-  try {
-    await request.jwtVerify();
-  } catch (err) {
-    reply.send(err);
-  }
+server.register(cors, {
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true,
 });
 
-server.register(userRoutes);
+server.register(authRoutes, { prefix: "/auth" });
+server.register(userRoutes, { prefix: "/users" });
 server.setErrorHandler(errorHandler);
 
 const start = async () => {
   try {
+    await seed();
     await server.listen({ port: config.port, host: "0.0.0.0" });
     console.log(`🚀 Server running on http://localhost:${config.port}`);
   } catch (err) {
-    server.log.error(err);
+    console.error(err);
     process.exit(1);
   }
 };

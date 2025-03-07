@@ -1,6 +1,6 @@
-import { db } from "../../db/index";
-import { usersTable } from "../../db/schema";
-import { eq, like, and, asc, desc } from "drizzle-orm";
+import { db } from "../../db/index.js";
+import { usersTable } from "../../db/schema.js";
+import { eq, asc, desc, getTableColumns, or, ilike } from "drizzle-orm";
 
 export class UserRepository {
   async createUser(
@@ -10,10 +10,11 @@ export class UserRepository {
     password: string,
     birthdate: Date
   ) {
-    return db
+    const user = await db
       .insert(usersTable)
       .values({ firstName, lastName, email, password, birthdate })
       .returning();
+    return user;
   }
 
   async getUserByEmail(email: string) {
@@ -21,46 +22,71 @@ export class UserRepository {
   }
 
   async getUserById(id: number) {
-    return db.select().from(usersTable).where(eq(usersTable.id, id));
+    const { password, ...rest } = getTableColumns(usersTable);
+    const user = await db
+      .select({ ...rest })
+      .from(usersTable)
+      .where(eq(usersTable.id, id))
+      .execute();
+    return user;
   }
 
   async getAllUsers(
     page: number,
     limit: number,
     search?: string,
-    sortBy?: "id" | "firstName" | "lastName" | "email" | "birthdate" | "createdAt",
+    sortBy?:
+      | "id"
+      | "firstName"
+      | "lastName"
+      | "email"
+      | "birthdate"
+      | "createdAt",
     sortOrder?: string
   ) {
-    const offset = (page - 1) * limit;
+    const safePage = Math.max(1, page);
+    const offset = (safePage - 1) * limit;
 
-    let whereClause = and();
+    const validSortBy = [
+      "id",
+      "firstName",
+      "lastName",
+      "email",
+      "birthdate",
+      "createdAt",
+    ].includes(sortBy!)
+      ? sortBy
+      : "id";
 
-    if (search) {
-      whereClause = and(
-        whereClause,
-        like(usersTable.email, `%${search}%`),
-        like(usersTable.firstName, `%${search}%`),
-        like(usersTable.lastName, `%${search}%`)
-      );
-    }
-    const totalUsers = await db
-      .select()
-      .from(usersTable)
-      .where(whereClause)
-      .execute();
+    const validSortOrder = sortOrder === "desc" ? "desc" : "asc";
+
+    let whereClause = search
+      ? or(
+          ilike(usersTable.email, `%${search}%`),
+          ilike(usersTable.firstName, `%${search}%`),
+          ilike(usersTable.lastName, `%${search}%`)
+        )
+      : undefined;
+
+    const totalUsers = await db.$count(usersTable, whereClause);
+
+    const { password, ...rest } = getTableColumns(usersTable);
     const usersList = await db
-      .select()
+      .select({ ...rest })
       .from(usersTable)
       .where(whereClause)
       .orderBy(
-        sortOrder === "asc" ? asc(usersTable[sortBy || "id"]) : desc(usersTable[sortBy || "id"])
+        validSortOrder === "asc"
+          ? asc(usersTable[validSortBy || "id"])
+          : desc(usersTable[validSortBy || "id"])
       )
       .limit(limit)
       .offset(offset)
       .execute();
+
     return {
-      total: totalUsers.length,
-      page,
+      total: totalUsers,
+      page: safePage,
       limit,
       users: usersList,
     };

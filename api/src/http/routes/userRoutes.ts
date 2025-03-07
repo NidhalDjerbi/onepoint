@@ -1,39 +1,16 @@
 import { FastifyInstance } from "fastify";
-import { UserController } from "../users/controllers/userController";
+import { UserController } from "../../users/controllers/userController.js";
 import {
-  loginSchemaJson,
   registerUserJsonSchema,
   updateUserJsonSchema,
   userIdJsonSchema,
-} from "../users/schema/userSchema";
-import { authMiddleware } from "../middlewares/authMiddleware";
+} from "../../users/schema/userSchema.js";
+import { authMiddleware } from "../middlewares/authMiddleware.js";
 
 const userController = new UserController();
 
 export async function userRoutes(fastify: FastifyInstance) {
-  fastify.post("/users/login", {
-    schema: {
-      body: loginSchemaJson, // ✅ Validate request body
-      response: {
-        200: {
-          type: "object",
-          properties: {
-            message: { type: "string" },
-            data: { type: "string" },
-          },
-        },
-        400: {
-          type: "object",
-          properties: {
-            error: { type: "string" },
-          },
-        },
-      },
-    },
-    handler: userController.login,
-  });
-
-  fastify.post("/users", {
+  fastify.post("/", {
     schema: {
       description: "Create a new user",
       body: registerUserJsonSchema, // ✅ Correctly converted Zod schema for request body
@@ -58,10 +35,11 @@ export async function userRoutes(fastify: FastifyInstance) {
         },
       },
     },
-    handler: userController.registerUser,
+    preHandler: authMiddleware,
+    handler: userController.createUser,
   });
 
-  fastify.put("/users/:id", {
+  fastify.put("/:id", {
     schema: {
       description: "Update a user",
       params: {
@@ -92,16 +70,42 @@ export async function userRoutes(fastify: FastifyInstance) {
         },
       },
     },
+    preHandler: authMiddleware,
     handler: userController.updateUser,
   });
 
-  fastify.get(
-    "/users",
-    { preHandler: authMiddleware },
-    userController.getAllUsers
-  );
+  fastify.get("/", { preHandler: authMiddleware }, userController.getAllUsers);
 
-  fastify.delete("/users/:id", {
+  fastify.get("/:id", {
+    schema: {
+      description: "Get a user by ID",
+      params: userIdJsonSchema,
+      response: {
+        200: {
+          description: "User found",
+          type: "object",
+          properties: {
+            id: { type: "number" },
+            firstName: { type: "string" },
+            lastName: { type: "string" },
+            email: { type: "string" },
+            birthdate: { type: "string" },
+          },
+        },
+        400: {
+          description: "Validation error",
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+    preHandler: authMiddleware,
+    handler: userController.getUserById,
+  });
+
+  fastify.delete("/:id", {
     schema: {
       description: "Delete a user",
       params: userIdJsonSchema,
@@ -126,6 +130,7 @@ export async function userRoutes(fastify: FastifyInstance) {
         },
       },
     },
+    preHandler: authMiddleware,
     handler: userController.deleteUser,
   });
 }
